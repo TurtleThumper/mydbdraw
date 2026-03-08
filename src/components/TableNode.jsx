@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { Handle, Position } from 'reactflow';
 import { useStore } from '../store/index.js';
-import ContextMenu from './ContextMenu.jsx';
 import InsertFieldModal from './InsertFieldModal.jsx';
+import { hoveredField } from '../utils/hoveredField.js';
 
 const GROUP_COLORS = {
   default: null,
@@ -27,13 +27,11 @@ const ACCENT_COLORS = {
 export default function TableNode({ id, data, selected }) {
   const { setNodeCollapsed, setNodeColor, insertFieldInDBML } = useStore();
   const { table, color } = data;
-
-  // Read collapsed directly from data (kept in sync by CanvasPane effect)
   const collapsed = data.collapsed || false;
 
   const [colorMenu, setColorMenu] = useState(false);
-  const [fieldCtx, setFieldCtx] = useState(null);   // { fieldName, x, y }
-  const [insertModal, setInsertModal] = useState(null); // { fieldName, position }
+  // insertModal is now triggered externally via a custom event from CanvasPane
+  const [insertModal, setInsertModal] = useState(null);
 
   const accentColor = ACCENT_COLORS[color || 'default'];
   const bgColor = GROUP_COLORS[color || 'default'];
@@ -42,39 +40,22 @@ export default function TableNode({ id, data, selected }) {
   const pkFields = fields.filter(f => f.pk);
   const regularFields = fields.filter(f => !f.pk);
 
-  // ── Collapse ──────────────────────────────────────────────────────────────
+  // Listen for insert-field events dispatched by CanvasPane
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.nodeId === id) {
+        setInsertModal({ fieldName: e.detail.fieldName, position: e.detail.position });
+      }
+    };
+    window.addEventListener('open-insert-field-modal', handler);
+    return () => window.removeEventListener('open-insert-field-modal', handler);
+  }, [id]);
+
   const handleToggleCollapse = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     setNodeCollapsed(id, !collapsed);
   }, [id, collapsed, setNodeCollapsed]);
-
-  // ── Field right-click ─────────────────────────────────────────────────────
-  const handleFieldContextMenu = useCallback((e, fieldName) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Use nativeEvent so coordinates are true viewport pixels,
-    // not distorted by ReactFlow canvas zoom/pan transform
-    const native = e.nativeEvent || e;
-    setFieldCtx({ fieldName, x: native.clientX, y: native.clientY });
-  }, []);
-
-  const closeFieldCtx = useCallback(() => setFieldCtx(null), []);
-
-  const buildFieldMenuSections = (fieldName) => [
-    [
-      {
-        label: 'Insert field above',
-        icon: <InsertAboveIcon />,
-        onClick: () => setInsertModal({ fieldName, position: 'above' }),
-      },
-      {
-        label: 'Insert field below',
-        icon: <InsertBelowIcon />,
-        onClick: () => setInsertModal({ fieldName, position: 'below' }),
-      },
-    ],
-  ];
 
   return (
     <>
@@ -88,7 +69,7 @@ export default function TableNode({ id, data, selected }) {
             : '0 4px 24px rgba(0,0,0,0.4)',
         }}
       >
-        {/* ── Header ───────────────────────────────────────────────────────── */}
+        {/* Header */}
         <div
           className="flex items-center justify-between px-3 py-2 border-b"
           style={{
@@ -100,7 +81,6 @@ export default function TableNode({ id, data, selected }) {
             borderTopRightRadius: 9,
           }}
         >
-          {/* Table name */}
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-2 h-2 rounded-full shrink-0" style={{ background: accentColor }} />
             <span
@@ -115,9 +95,7 @@ export default function TableNode({ id, data, selected }) {
             )}
           </div>
 
-          {/* Header controls */}
           <div className="flex items-center gap-1 ml-2 shrink-0">
-            {/* Field count badge */}
             <span className="text-xs text-muted bg-surface-4 px-1.5 py-0.5 rounded-full font-mono">
               {fields.length}
             </span>
@@ -152,7 +130,7 @@ export default function TableNode({ id, data, selected }) {
               )}
             </div>
 
-            {/* Collapse toggle — use onPointerDown for reliable ReactFlow capture */}
+            {/* Collapse toggle */}
             <button
               className="w-5 h-5 flex items-center justify-center rounded text-muted hover:text-secondary hover:bg-surface-4 transition-colors"
               onPointerDown={handleToggleCollapse}
@@ -171,51 +149,30 @@ export default function TableNode({ id, data, selected }) {
           </div>
         </div>
 
-        {/* ── Table note ───────────────────────────────────────────────────── */}
+        {/* Table note */}
         {!collapsed && table?.note && (
           <div className="px-3 py-1.5 text-xs text-muted italic border-b border-border/50">
             {table.note}
           </div>
         )}
 
-        {/* ── Fields ───────────────────────────────────────────────────────── */}
+        {/* Fields */}
         {!collapsed && (
           <div className="py-1.5">
             {pkFields.map(field => (
-              <FieldRow
-                key={field.name}
-                field={field}
-                accentColor={accentColor}
-                isPK
-                onContextMenu={(e) => handleFieldContextMenu(e, field.name)}
-              />
+              <FieldRow key={field.name} field={field} nodeId={id} accentColor={accentColor} isPK />
             ))}
             {pkFields.length > 0 && regularFields.length > 0 && (
               <div className="mx-3 my-1 border-t border-border/50" />
             )}
             {regularFields.map(field => (
-              <FieldRow
-                key={field.name}
-                field={field}
-                accentColor={accentColor}
-                onContextMenu={(e) => handleFieldContextMenu(e, field.name)}
-              />
+              <FieldRow key={field.name} field={field} nodeId={id} accentColor={accentColor} />
             ))}
           </div>
         )}
       </div>
 
-      {/* ── Field context menu (rendered outside node div to avoid z-index clip) */}
-      {fieldCtx && (
-        <ContextMenu
-          x={fieldCtx.x}
-          y={fieldCtx.y}
-          onClose={closeFieldCtx}
-          sections={buildFieldMenuSections(fieldCtx.fieldName)}
-        />
-      )}
-
-      {/* ── Insert field modal */}
+      {/* Insert field modal */}
       {insertModal && (
         <InsertFieldModal
           tableName={id}
@@ -232,16 +189,22 @@ export default function TableNode({ id, data, selected }) {
   );
 }
 
-// ── FieldRow ──────────────────────────────────────────────────────────────────
-
-function FieldRow({ field, accentColor, isPK, onContextMenu }) {
+function FieldRow({ field, nodeId, accentColor, isPK }) {
   return (
     <div
       className="relative flex items-center px-3 py-1 hover:bg-surface-3 group transition-colors cursor-default"
       style={{ minHeight: 32 }}
-      onContextMenu={onContextMenu}
+      onMouseEnter={() => {
+        hoveredField.nodeId = nodeId;
+        hoveredField.fieldName = field.name;
+      }}
+      onMouseLeave={() => {
+        if (hoveredField.fieldName === field.name && hoveredField.nodeId === nodeId) {
+          hoveredField.nodeId = null;
+          hoveredField.fieldName = null;
+        }
+      }}
     >
-      {/* Left handle */}
       <Handle
         id={`field-left-${field.name}`}
         type="target"
@@ -249,7 +212,6 @@ function FieldRow({ field, accentColor, isPK, onContextMenu }) {
         style={{ top: '50%', left: -4, background: accentColor, width: 8, height: 8, border: '2px solid #0f1117' }}
       />
 
-      {/* PK / FK icon */}
       <div className="w-4 shrink-0 mr-1.5 flex items-center justify-center">
         {isPK && (
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -264,7 +226,6 @@ function FieldRow({ field, accentColor, isPK, onContextMenu }) {
         )}
       </div>
 
-      {/* Field name */}
       <span
         className={`flex-1 text-xs truncate font-mono ${isPK ? 'text-amber-300' : 'text-primary'}`}
         title={field.name}
@@ -272,7 +233,6 @@ function FieldRow({ field, accentColor, isPK, onContextMenu }) {
         {field.name}
       </span>
 
-      {/* Badges */}
       <div className="flex items-center gap-1 ml-1">
         {field.unique && !isPK && (
           <span className="text-xs text-violet-400 font-mono opacity-70" title="Unique">U</span>
@@ -282,12 +242,9 @@ function FieldRow({ field, accentColor, isPK, onContextMenu }) {
         )}
       </div>
 
-      {/* Right-click hint — shown on hover */}
-      <span className="hidden group-hover:inline-flex items-center text-[10px] text-muted/50 ml-1 mr-1 font-mono shrink-0">
-        ⋮
-      </span>
+      {/* Right-click hint on hover */}
+      <span className="hidden group-hover:inline-flex items-center text-[10px] text-muted/40 ml-1 mr-1 font-mono shrink-0">⋮</span>
 
-      {/* Field type */}
       <span
         className="text-xs font-mono shrink-0"
         style={{ color: '#06b6d4', opacity: 0.8 }}
@@ -296,7 +253,6 @@ function FieldRow({ field, accentColor, isPK, onContextMenu }) {
         {field.type.length > 12 ? field.type.substring(0, 10) + '…' : field.type}
       </span>
 
-      {/* Right handle */}
       <Handle
         id={`field-right-${field.name}`}
         type="source"
@@ -307,8 +263,8 @@ function FieldRow({ field, accentColor, isPK, onContextMenu }) {
   );
 }
 
-// Icons
-const InsertAboveIcon = () => (
+// Icons used by CanvasPane field menu sections (exported for reuse)
+export const InsertAboveIcon = () => (
   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
     <path d="M2 4.5h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="2 1.5"/>
     <rect x="2" y="6" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/>
@@ -316,7 +272,7 @@ const InsertAboveIcon = () => (
   </svg>
 );
 
-const InsertBelowIcon = () => (
+export const InsertBelowIcon = () => (
   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
     <rect x="2" y="2" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/>
     <path d="M2 7.5h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="2 1.5"/>

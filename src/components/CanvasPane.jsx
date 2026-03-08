@@ -17,6 +17,8 @@ import TableNode from './TableNode.jsx';
 import NoteNode from './NoteNode.jsx';
 import ContextMenu from './ContextMenu.jsx';
 import RenameModal from './RenameModal.jsx';
+import { InsertAboveIcon, InsertBelowIcon } from './TableNode.jsx';
+import { hoveredField } from '../utils/hoveredField.js';
 
 const nodeTypes = { tableNode: TableNode, noteNode: NoteNode };
 const ACCENT_COLORS = { default: '#3b82f6', blue: '#3b82f6', green: '#10b981', rose: '#f43f5e', violet: '#8b5cf6', amber: '#f59e0b', cyan: '#06b6d4' };
@@ -89,7 +91,21 @@ export default function CanvasPane({ project }) {
   const onNodeContextMenu = useCallback((e, node) => {
     e.preventDefault();
     e.stopPropagation();
-    setCtxMenu({ type: node.type === 'noteNode' ? 'note' : 'node', x: e.clientX, y: e.clientY, target: node });
+    // If the cursor is over a specific field row, show the field menu.
+    // We use hoveredField (set by FieldRow mouseenter) so we get ReactFlow's
+    // already-correct screen coordinates from this callback instead of trying
+    // to extract coordinates from inside the scaled canvas node.
+    if (node.type === 'tableNode' && hoveredField.nodeId === node.id && hoveredField.fieldName) {
+      setCtxMenu({
+        type: 'field',
+        x: e.clientX,
+        y: e.clientY,
+        nodeId: node.id,
+        fieldName: hoveredField.fieldName,
+      });
+    } else {
+      setCtxMenu({ type: node.type === 'noteNode' ? 'note' : 'node', x: e.clientX, y: e.clientY, target: node });
+    }
   }, []);
 
   const onEdgeContextMenu = useCallback((e, edge) => {
@@ -173,6 +189,23 @@ export default function CanvasPane({ project }) {
       icon: <TrashIcon />,
       danger: true,
       onClick: () => useStore.getState().deleteNote(node.id),
+    },
+  ]];
+
+  const buildFieldMenuSections = (nodeId, fieldName) => [[
+    {
+      label: `Insert above "${fieldName}"`,
+      icon: <InsertAboveIcon />,
+      onClick: () => window.dispatchEvent(new CustomEvent('open-insert-field-modal', {
+        detail: { nodeId, fieldName, position: 'above' }
+      })),
+    },
+    {
+      label: `Insert below "${fieldName}"`,
+      icon: <InsertBelowIcon />,
+      onClick: () => window.dispatchEvent(new CustomEvent('open-insert-field-modal', {
+        detail: { nodeId, fieldName, position: 'below' }
+      })),
     },
   ]];
 
@@ -330,6 +363,7 @@ export default function CanvasPane({ project }) {
       {ctxMenu?.type === 'note' && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} onClose={closeCtxMenu} sections={buildNoteMenuSections(ctxMenu.target)} />}
       {ctxMenu?.type === 'edge' && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} onClose={closeCtxMenu} sections={buildEdgeMenuSections(ctxMenu.target)} />}
       {ctxMenu?.type === 'canvas' && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} onClose={closeCtxMenu} sections={buildCanvasMenuSections(ctxMenu.canvasPos)} />}
+      {ctxMenu?.type === 'field' && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} onClose={closeCtxMenu} sections={buildFieldMenuSections(ctxMenu.nodeId, ctxMenu.fieldName)} />}
 
       {/* Rename modal */}
       {renameModal && (
