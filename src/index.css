@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #0f1117;
+  color: #e2e8f0;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0f1117; }
+::-webkit-scrollbar-thumb { background: #2a3349; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3b4a6b; }
+
+/* ReactFlow overrides */
+.react-flow__background { background: #0a0d14; }
+.react-flow__edge-path { stroke: #3b4a6b; stroke-width: 2; }
+.react-flow__edge.selected .react-flow__edge-path { stroke: #3b82f6; }
+.react-flow__handle {
+  width: 8px; height: 8px;
+  background: #3b82f6;
+  border: 2px solid #0f1117;
+  border-radius: 50%;
+}
+.react-flow__handle:hover { background: #06b6d4; transform: scale(1.4); }
+.react-flow__minimap { background: #161b27; border: 1px solid #2a3349; border-radius: 8px; }
+.react-flow__controls { background: #161b27; border: 1px solid #2a3349; border-radius: 8px; overflow: hidden; }
+.react-flow__controls button { background: #161b27; border-bottom: 1px solid #2a3349; color: #a0aec0; }
+.react-flow__controls button:hover { background: #1e2535; color: #e2e8f0; }
+.react-flow__controls button svg { fill: currentColor; }
+
+/* Monaco editor */
+.monaco-editor .margin { background: #0f1117 !important; }
+.monaco-editor { font-family: 'JetBrains Mono', monospace !important; }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn { animation: fadeIn 0.15s ease; }
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.animate-pulse-soft { animation: pulse-soft 2s infinite; }
+
+/* Table node */
+.table-node {
+  background: #161b27;
+  border: 1px solid #2a3349;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  transition: box-shadow 0.2s, border-color 0.2s;
+  min-width: 200px;
+}
+.table-node:hover { border-color: #3b82f6; box-shadow: 0 4px 32px rgba(59,130,246,0.15); }
+.table-node.selected { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.3), 0 4px 32px rgba(59,130,246,0.2); }
+
+/* Tooltip */
+.tooltip {
+  position: absolute;
+  background: #1e2535;
+  border: 1px solid #2a3349;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #a0aec0;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 9999;
+}
