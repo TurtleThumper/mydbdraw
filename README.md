@@ -1,4 +1,4 @@
-# LocalDiagram
+# DBdraw
 
 A local, offline PostgreSQL schema diagram tool — a self-hosted alternative to dbdiagram.io built with Electron + React.
 
@@ -78,7 +78,7 @@ TableGroup "Content" {
 ## Project Structure
 
 ```
-localdiagram/
+dbdraw/
 ├── electron/
 │   ├── main.js          # Electron main process (file I/O, window)
 │   └── preload.js       # Secure IPC bridge

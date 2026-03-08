@@ -53,7 +53,10 @@ export default function TableNode({ id, data, selected }) {
   const handleFieldContextMenu = useCallback((e, fieldName) => {
     e.preventDefault();
     e.stopPropagation();
-    setFieldCtx({ fieldName, x: e.clientX, y: e.clientY });
+    // Use nativeEvent so coordinates are true viewport pixels,
+    // not distorted by ReactFlow canvas zoom/pan transform
+    const native = e.nativeEvent || e;
+    setFieldCtx({ fieldName, x: native.clientX, y: native.clientY });
   }, []);
 
   const closeFieldCtx = useCallback(() => setFieldCtx(null), []);

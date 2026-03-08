@@ -51,7 +51,7 @@ export default function EditorPane({ project }) {
       },
     });
 
-    monaco.editor.defineTheme('localdiagram', {
+    monaco.editor.defineTheme('dbdraw', {
       base: 'vs-dark',
       inherit: true,
       rules: [
@@ -79,7 +79,7 @@ export default function EditorPane({ project }) {
         'editorIndentGuide.activeBackground': '#2a3349',
       },
     });
-    monaco.editor.setTheme('localdiagram');
+    monaco.editor.setTheme('dbdraw');
 
     // Autocomplete
     monaco.languages.registerCompletionItemProvider('dbml', {

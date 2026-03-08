@@ -5,7 +5,7 @@ import { buildNodesAndEdges } from '../utils/layout';
 
 const MAX_HISTORY = 50;
 
-const DEFAULT_DBML = `// LocalDiagram — PostgreSQL Schema Designer
+const DEFAULT_DBML = `// DBdraw — PostgreSQL Schema Designer
 // Start typing or use the visual canvas to build your schema
 
 Table users {
@@ -88,7 +88,7 @@ export const useStore = create(immer((set, get) => ({
     // Try parsing as JSON project
     try {
       const parsed = JSON.parse(fileData.content);
-      if (parsed.__localdiagram) {
+      if (parsed.__dbdraw) {
         dbml = parsed.dbml;
         name = parsed.name || name;
         extra = { nodePositions: parsed.nodePositions || {}, nodeColors: parsed.nodeColors || {}, nodeCollapsed: parsed.nodeCollapsed || {}, notes: parsed.notes || [] };

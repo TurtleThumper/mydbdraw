@@ -1,7 +1,7 @@
 {
-  "name": "localdiagram",
+  "name": "dbdraw",
   "version": "1.0.0",
-  "description": "Local PostgreSQL schema diagram tool",
+  "description": "DBdraw \u2014 Local PostgreSQL schema diagram tool",
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
@@ -32,10 +32,17 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.localdiagram.app",
-    "productName": "LocalDiagram",
-    "directories": { "output": "dist-electron" },
-    "win": { "target": "nsis" },
-    "files": ["dist/**/*", "electron/**/*"]
+    "appId": "com.dbdraw.app",
+    "productName": "DBdraw",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ]
   }
 }

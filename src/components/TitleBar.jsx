@@ -20,7 +20,7 @@ export default function TitleBar() {
   const handleSave = async () => {
     if (!activeProject) return;
     const content = JSON.stringify({
-      __localdiagram: true,
+      __dbdraw: true,
       name: activeProject.name,
       dbml: activeProject.dbml,
       nodePositions: activeProject.nodePositions,
@@ -86,7 +86,7 @@ export default function TitleBar() {
           <line x1="7" y1="12" x2="17" y2="12" stroke="#3b4a6b" strokeWidth="1.5"/>
         </svg>
         <span className="text-xs font-semibold text-primary tracking-wide" style={{ fontFamily: 'Space Grotesk' }}>
-          LocalDiagram
+          DBdraw
         </span>
       </div>
 
