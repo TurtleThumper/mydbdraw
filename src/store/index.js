@@ -190,6 +190,111 @@ export const useStore = create(immer((set, get) => ({
     if (proj) { proj.notes = proj.notes.filter(n => n.id !== noteId); proj.dirty = true; }
   }),
 
+  // Table DBML operations (used by context menus)
+  deleteTableFromDBML: (tableName) => set(state => {
+    const proj = state.projects.find(p => p.id === state.activeProjectId);
+    if (!proj) return;
+    const lines = proj.dbml.split('\n');
+    const out = [];
+    let inTable = false;
+    let depth = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const tableMatch = line.match(/^\s*[Tt]able\s+["']?(\w+)["']?/);
+      if (tableMatch && tableMatch[1] === tableName && !inTable) {
+        inTable = true; depth = 0;
+        if (line.includes('{')) depth = 1;
+        continue;
+      }
+      if (inTable) {
+        if (line.includes('{')) depth++;
+        if (line.includes('}')) depth--;
+        if (depth <= 0) { inTable = false; }
+        continue;
+      }
+      const refLine = line.match(/^\s*[Rr]ef\s*\w*\s*:/);
+      if (refLine && line.includes(tableName + '.')) continue;
+      if (line.trim() === tableName) continue;
+      out.push(line);
+    }
+    const newDBML = out.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+    proj.dbml = newDBML;
+    proj.dirty = true;
+    delete proj.nodePositions[tableName];
+    delete proj.nodeColors[tableName];
+    delete proj.nodeCollapsed[tableName];
+    const hist = proj.history.slice(0, proj.historyIndex + 1);
+    hist.push(newDBML);
+    proj.history = hist;
+    proj.historyIndex = hist.length - 1;
+    state.parseError = parseDBML(newDBML).error || null;
+  }),
+
+  duplicateTableInDBML: (tableName) => set(state => {
+    const proj = state.projects.find(p => p.id === state.activeProjectId);
+    if (!proj) return;
+    const lines = proj.dbml.split('\n');
+    const tableLines = [];
+    let inTable = false;
+    let depth = 0;
+    for (const line of lines) {
+      const tableMatch = line.match(/^\s*[Tt]able\s+["']?(\w+)["']?/);
+      if (tableMatch && tableMatch[1] === tableName && !inTable) {
+        inTable = true; depth = 0;
+        if (line.includes('{')) depth = 1;
+        tableLines.push(line);
+        continue;
+      }
+      if (inTable) {
+        if (line.includes('{')) depth++;
+        if (line.includes('}')) depth--;
+        tableLines.push(line);
+        if (depth <= 0) { inTable = false; break; }
+      }
+    }
+    if (!tableLines.length) return;
+    let newName = `${tableName}_copy`;
+    let counter = 1;
+    while (proj.dbml.includes(`Table ${newName}`)) { newName = `${tableName}_copy${counter++}`; }
+    const newBlock = tableLines.join('\n').replace(
+      new RegExp(`(Table\\s+)${tableName}\\b`), `$1${newName}`
+    );
+    const newDBML = proj.dbml.trimEnd() + '\n\n' + newBlock + '\n';
+    proj.dbml = newDBML;
+    proj.dirty = true;
+    if (proj.nodePositions[tableName]) {
+      proj.nodePositions[newName] = {
+        x: proj.nodePositions[tableName].x + 60,
+        y: proj.nodePositions[tableName].y + 60,
+      };
+    }
+    const hist = proj.history.slice(0, proj.historyIndex + 1);
+    hist.push(newDBML);
+    proj.history = hist;
+    proj.historyIndex = hist.length - 1;
+    state.parseError = parseDBML(newDBML).error || null;
+  }),
+
+  renameTableInDBML: (oldName, newName) => set(state => {
+    const proj = state.projects.find(p => p.id === state.activeProjectId);
+    if (!proj || !newName.trim() || newName === oldName) return;
+    const safeName = newName.trim().replace(/\s+/g, '_');
+    let newDBML = proj.dbml
+      .replace(new RegExp(`\\bTable\\s+${oldName}\\b`, 'g'), `Table ${safeName}`)
+      .replace(new RegExp(`\\b${oldName}\\.`, 'g'), `${safeName}.`)
+      .replace(new RegExp(`^(\\s*)${oldName}(\\s*)$`, 'gm'), `$1${safeName}$2`);
+    proj.dbml = newDBML;
+    proj.dirty = true;
+    if (proj.nodePositions[oldName]) { proj.nodePositions[safeName] = proj.nodePositions[oldName]; delete proj.nodePositions[oldName]; }
+    if (proj.nodeColors[oldName]) { proj.nodeColors[safeName] = proj.nodeColors[oldName]; delete proj.nodeColors[oldName]; }
+    if (proj.nodeCollapsed[oldName] !== undefined) { proj.nodeCollapsed[safeName] = proj.nodeCollapsed[oldName]; delete proj.nodeCollapsed[oldName]; }
+    const hist = proj.history.slice(0, proj.historyIndex + 1);
+    hist.push(newDBML);
+    proj.history = hist;
+    proj.historyIndex = hist.length - 1;
+    state.parseError = parseDBML(newDBML).error || null;
+  }),
+
   // File operations
   markSaved: (id, filePath) => set(state => {
     const proj = state.projects.find(p => p.id === id);
