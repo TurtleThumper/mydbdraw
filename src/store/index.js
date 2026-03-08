@@ -295,6 +295,45 @@ export const useStore = create(immer((set, get) => ({
     state.parseError = parseDBML(newDBML).error || null;
   }),
 
+  // Insert a new field into a table above or below a reference field
+  insertFieldInDBML: (tableName, relativeFieldName, position, newField) => set(state => {
+    const proj = state.projects.find(p => p.id === state.activeProjectId);
+    if (!proj) return;
+    const lines = proj.dbml.split('\n');
+    const out = [];
+    let inTable = false;
+    let depth = 0;
+    let inserted = false;
+    const fieldLine = '  ' + newField.name + ' ' + newField.type + (newField.attrs ? ' [' + newField.attrs + ']' : '');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const tableMatch = line.match(/^\s*[Tt]able\s+["\'"]?(\w+)["\'"]?/);
+      if (tableMatch && tableMatch[1] === tableName && !inTable) {
+        inTable = true; depth = line.includes('{') ? 1 : 0;
+        out.push(line); continue;
+      }
+      if (inTable) {
+        if (line.includes('{')) depth++;
+        if (line.includes('}')) depth--;
+        const isRefField = line.match(new RegExp('^\\s+' + relativeFieldName + '\\s'));
+        if (isRefField && !inserted) {
+          if (position === 'above') { out.push(fieldLine); out.push(line); }
+          else { out.push(line); out.push(fieldLine); }
+          inserted = true;
+          if (depth <= 0) inTable = false;
+          continue;
+        }
+        if (depth <= 0 && !inserted) { out.push(fieldLine); inserted = true; inTable = false; }
+      }
+      out.push(line);
+    }
+    const newDBML = out.join('\n');
+    proj.dbml = newDBML; proj.dirty = true;
+    const hist = proj.history.slice(0, proj.historyIndex + 1);
+    hist.push(newDBML); proj.history = hist; proj.historyIndex = hist.length - 1;
+    state.parseError = parseDBML(newDBML).error || null;
+  }),
+
   // File operations
   markSaved: (id, filePath) => set(state => {
     const proj = state.projects.find(p => p.id === id);

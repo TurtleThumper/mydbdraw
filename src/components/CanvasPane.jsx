@@ -36,7 +36,7 @@ export default function CanvasPane({ project }) {
   const [ctxMenu, setCtxMenu] = useState(null);
   const [renameModal, setRenameModal] = useState(null);
 
-  // Re-parse when DBML changes
+  // Re-parse when DBML or colors change (collapsed handled separately)
   useEffect(() => {
     if (!project) return;
     if (project.dbml === prevDbml.current) return;
@@ -53,7 +53,22 @@ export default function CanvasPane({ project }) {
     }));
     setNodes([...newNodes, ...noteNodes]);
     setEdges(newEdges);
-  }, [project?.dbml, project?.nodeColors, project?.nodeCollapsed]);
+  }, [project?.dbml, project?.nodeColors]);
+
+  // Update collapsed state + node height live (no re-parse needed)
+  useEffect(() => {
+    if (!project) return;
+    const nodeCollapsed = project.nodeCollapsed || {};
+    const TABLE_HEADER_H = 44;
+    const TABLE_FIELD_H = 32;
+    setNodes(nds => nds.map(n => {
+      if (n.type !== 'tableNode') return n;
+      const collapsed = nodeCollapsed[n.id] || false;
+      const fieldCount = n.data?.table?.fields?.length || 0;
+      const height = TABLE_HEADER_H + (collapsed ? 0 : fieldCount * TABLE_FIELD_H + 12);
+      return { ...n, style: { ...n.style, height }, data: { ...n.data, collapsed } };
+    }));
+  }, [project?.nodeCollapsed]);
 
   useEffect(() => {
     if (!project) return;
