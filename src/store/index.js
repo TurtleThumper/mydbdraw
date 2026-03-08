@@ -334,6 +334,69 @@ export const useStore = create(immer((set, get) => ({
     state.parseError = parseDBML(newDBML).error || null;
   }),
 
+  // Update or remove a table's Note in DBML
+  updateTableNoteInDBML: (tableName, noteText) => set(state => {
+    const proj = state.projects.find(p => p.id === state.activeProjectId);
+    if (!proj) return;
+    const lines = proj.dbml.split('\n');
+    const out = [];
+    let inTarget = false;
+    let braceDepth = 0;
+    let noteWritten = false;
+    let headerLineIdx = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      // Detect Table block start
+      if (!inTarget) {
+        const tMatch = trimmed.match(/^[Tt]able\s+["']?(\w+)["']?(\s+as\s+\S+)?\s*\{?/);
+        if (tMatch && tMatch[1] === tableName) {
+          inTarget = true;
+          braceDepth = (trimmed.includes('{')) ? 1 : 0;
+          headerLineIdx = out.length;
+          out.push(line);
+          continue;
+        }
+        out.push(line);
+        continue;
+      }
+
+      // Inside target table block
+      if (trimmed.includes('{')) braceDepth++;
+      if (trimmed.includes('}')) braceDepth--;
+
+      if (braceDepth <= 0) {
+        // Closing brace — if we haven't written the note yet and there's text, insert before closing
+        if (noteText && !noteWritten) {
+          out.push(`  Note: '${noteText}'`);
+        }
+        inTarget = false;
+        out.push(line);
+        continue;
+      }
+
+      // Skip existing Note lines inside this table
+      if (trimmed.match(/^[Nn]ote:/)) {
+        if (noteText && !noteWritten) {
+          out.push(`  Note: '${noteText}'`);
+          noteWritten = true;
+        }
+        // If noteText is empty, just skip the old note (effectively deletes it)
+        continue;
+      }
+
+      out.push(line);
+    }
+
+    const newDBML = out.join('\n');
+    proj.dbml = newDBML; proj.dirty = true;
+    const hist = proj.history.slice(0, proj.historyIndex + 1);
+    hist.push(newDBML); proj.history = hist; proj.historyIndex = hist.length - 1;
+    state.parseError = parseDBML(newDBML).error || null;
+  }),
+
   // File operations
   markSaved: (id, filePath) => set(state => {
     const proj = state.projects.find(p => p.id === id);

@@ -25,11 +25,14 @@ const ACCENT_COLORS = {
 };
 
 export default function TableNode({ id, data, selected }) {
-  const { setNodeCollapsed, setNodeColor, insertFieldInDBML } = useStore();
+  const { setNodeCollapsed, setNodeColor, insertFieldInDBML, updateTableNoteInDBML } = useStore();
   const { table, color } = data;
   const collapsed = data.collapsed || false;
 
   const [colorMenu, setColorMenu] = useState(false);
+  const [noteTooltip, setNoteTooltip] = useState(false);
+  const [noteEditing, setNoteEditing] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
   // insertModal is now triggered externally via a custom event from CanvasPane
   const [insertModal, setInsertModal] = useState(null);
 
@@ -100,6 +103,113 @@ export default function TableNode({ id, data, selected }) {
               {fields.length}
             </span>
 
+            {/* Note icon — always visible, glows when a note exists */}
+            <div className="relative">
+              <button
+                className={`w-5 h-5 flex items-center justify-center rounded transition-colors ${
+                  table?.note
+                    ? 'text-amber-400 hover:text-amber-300 hover:bg-surface-4'
+                    : 'text-muted hover:text-secondary hover:bg-surface-4'
+                }`}
+                onMouseEnter={() => setNoteTooltip(true)}
+                onMouseLeave={() => { setNoteTooltip(false); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setNoteDraft(table?.note || '');
+                  setNoteEditing(true);
+                  setNoteTooltip(false);
+                }}
+                title={table?.note ? 'Edit note' : 'Add note'}
+              >
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                  <rect x="1" y="1" width="7" height="9" rx="1.2" stroke="currentColor" strokeWidth="1.2"/>
+                  <line x1="3" y1="3.5" x2="6" y2="3.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+                  <line x1="3" y1="5.5" x2="6" y2="5.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+                  <line x1="3" y1="7.5" x2="5" y2="7.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+                  {table?.note && <circle cx="9" cy="2" r="1.8" fill="#f59e0b"/>}
+                </svg>
+              </button>
+
+              {/* Hover tooltip */}
+              {noteTooltip && !noteEditing && (
+                <div
+                  className="absolute z-[9999] bottom-full left-1/2 mb-2 pointer-events-none"
+                  style={{ transform: 'translateX(-50%)', minWidth: 120, maxWidth: 220 }}
+                >
+                  <div
+                    className="rounded-lg px-2.5 py-1.5 text-xs shadow-2xl border border-border"
+                    style={{ background: '#1e2535', color: table?.note ? '#e2e8f0' : '#718096' }}
+                  >
+                    {table?.note || 'No note — click to add'}
+                  </div>
+                  <div className="w-2 h-2 mx-auto" style={{
+                    borderLeft: '6px solid transparent',
+                    borderRight: '6px solid transparent',
+                    borderTop: '6px solid #1e2535',
+                    marginTop: -1,
+                  }}/>
+                </div>
+              )}
+
+              {/* Edit modal */}
+              {noteEditing && (
+                <div
+                  className="fixed inset-0 z-[9998] flex items-center justify-center"
+                  style={{ background: 'rgba(0,0,0,0.6)' }}
+                  onClick={(e) => { e.stopPropagation(); setNoteEditing(false); }}
+                >
+                  <div
+                    className="rounded-xl border border-border shadow-2xl p-4 w-80"
+                    style={{ background: '#161b27' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="text-sm font-semibold text-primary mb-1" style={{ fontFamily: 'Space Grotesk' }}>
+                      Note for <span className="text-blue-400">{table?.name}</span>
+                    </div>
+                    <div className="text-xs text-muted mb-3">Saved to DBML as <code className="text-cyan-400">Note: '...'</code></div>
+                    <textarea
+                      autoFocus
+                      className="w-full rounded-lg px-3 py-2 text-xs text-primary border border-border resize-none focus:outline-none focus:border-blue-500"
+                      style={{ background: '#0f1117', minHeight: 72, fontFamily: 'JetBrains Mono' }}
+                      value={noteDraft}
+                      onChange={(e) => setNoteDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') { setNoteEditing(false); }
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                          updateTableNoteInDBML(table.name, noteDraft.trim());
+                          setNoteEditing(false);
+                        }
+                      }}
+                      placeholder="Add a description for this table..."
+                    />
+                    <div className="flex gap-2 mt-3 justify-end">
+                      {table?.note && (
+                        <button
+                          className="px-3 py-1.5 text-xs rounded-lg text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          onClick={() => { updateTableNoteInDBML(table.name, ''); setNoteEditing(false); }}
+                        >
+                          Remove note
+                        </button>
+                      )}
+                      <button
+                        className="px-3 py-1.5 text-xs rounded-lg text-muted hover:text-secondary hover:bg-surface-3 transition-colors"
+                        onClick={() => setNoteEditing(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="px-3 py-1.5 text-xs rounded-lg text-white transition-colors"
+                        style={{ background: '#3b82f6' }}
+                        onClick={() => { updateTableNoteInDBML(table.name, noteDraft.trim()); setNoteEditing(false); }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Color picker */}
             <div className="relative">
               <button
@@ -149,12 +259,7 @@ export default function TableNode({ id, data, selected }) {
           </div>
         </div>
 
-        {/* Table note */}
-        {!collapsed && table?.note && (
-          <div className="px-3 py-1.5 text-xs text-muted italic border-b border-border/50">
-            {table.note}
-          </div>
-        )}
+
 
         {/* Fields */}
         {!collapsed && (

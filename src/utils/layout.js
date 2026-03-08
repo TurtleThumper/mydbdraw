@@ -61,14 +61,8 @@ export function buildNodesAndEdges(schema, savedPositions = {}, nodeColors = {},
       target: toTable,
       sourceHandle: `field-right-${fromField}`,
       targetHandle: `field-left-${toField}`,
-      type: 'smoothstep',
-      animated: false,
-      label: getRelLabel(ref.type),
-      labelStyle: { fill: '#718096', fontSize: 10, fontFamily: 'JetBrains Mono' },
-      labelBgStyle: { fill: '#0f1117', fillOpacity: 0.8 },
-      style: { stroke: '#3b4a6b', strokeWidth: 2 },
+      type: 'glowEdge',
       data: { refType: ref.type, fromField, toField },
-      markerEnd: getMarkerEnd(ref.type),
     };
   }).filter(Boolean);
 
@@ -85,21 +79,7 @@ function autoPosition(index, total) {
   };
 }
 
-function getRelLabel(type) {
-  switch (type) {
-    case '>': return '1:N';
-    case '<': return 'N:1';
-    case '-': return '1:1';
-    case '<>': return 'N:M';
-    default: return '';
-  }
-}
-
-function getMarkerEnd(type) {
-  if (type === '>') return { type: 'arrowclosed', color: '#3b4a6b' };
-  if (type === '<') return { type: 'arrow', color: '#3b4a6b' };
-  return undefined;
-}
+// Edge rendering is handled by GlowEdge component
 
 export function autoLayout(nodes, edges) {
   // Simple grid layout - re-positions all nodes

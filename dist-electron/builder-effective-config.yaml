@@ -1,0 +1,12 @@
+directories:
+  output: dist-electron
+  buildResources: build
+appId: com.dbdraw.app
+productName: DBdraw
+win:
+  target: nsis
+files:
+  - filter:
+      - dist/**/*
+      - electron/**/*
+electronVersion: 31.7.7

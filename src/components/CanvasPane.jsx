@@ -19,8 +19,10 @@ import ContextMenu from './ContextMenu.jsx';
 import RenameModal from './RenameModal.jsx';
 import { InsertAboveIcon, InsertBelowIcon } from './TableNode.jsx';
 import { hoveredField } from '../utils/hoveredField.js';
+import GlowEdge from './GlowEdge.jsx';
 
 const nodeTypes = { tableNode: TableNode, noteNode: NoteNode };
+const edgeTypes = { glowEdge: GlowEdge };
 const ACCENT_COLORS = { default: '#3b82f6', blue: '#3b82f6', green: '#10b981', rose: '#f43f5e', violet: '#8b5cf6', amber: '#f59e0b', cyan: '#06b6d4' };
 
 export default function CanvasPane({ project }) {
@@ -326,13 +328,14 @@ export default function CanvasPane({ project }) {
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop} onInit={setRfInstance}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={onEdgeContextMenu}
         onPaneContextMenu={onPaneContextMenu}
         fitView fitViewOptions={{ padding: 0.15 }}
         deleteKeyCode={null} minZoom={0.1} maxZoom={2.5}
         proOptions={{ hideAttribution: true }}
-        defaultEdgeOptions={{ type: 'smoothstep', style: { stroke: '#3b4a6b', strokeWidth: 2 } }}
+        defaultEdgeOptions={{ type: 'glowEdge' }}
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#1e2535" />
         <Controls position="bottom-right" />
